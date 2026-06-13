@@ -396,7 +396,7 @@ def chat_with_bot(thread_id: str = "indihome-sales-1"):
 # Jalankan chatbot
 chat_with_bot()
 
-CODE UI STREAMLIT
+#CODE UI STREAMLIT
 
 import os
 import uuid
