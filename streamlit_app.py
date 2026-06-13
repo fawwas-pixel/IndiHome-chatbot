@@ -347,7 +347,7 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
 # Jika di Google Colab
-from google.colab import userdata
+
 
 # =========================================================
 # Pastikan fungsi-fungsi ini SUDAH didefinisikan di cell sebelumnya:
@@ -591,4 +591,3 @@ with col2:
             st.json(leads)
         else:
             st.info("Belum ada lead tersimpan.")
-            
