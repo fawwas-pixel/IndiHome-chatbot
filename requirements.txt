@@ -1,2 +1,4 @@
 streamlit
-openai
+langchain
+langgraph
+langchain-google-genai

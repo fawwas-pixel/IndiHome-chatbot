@@ -591,3 +591,4 @@ with col2:
             st.json(leads)
         else:
             st.info("Belum ada lead tersimpan.")
+            
