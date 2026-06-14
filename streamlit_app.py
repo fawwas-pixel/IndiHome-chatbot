@@ -1,37 +1,6 @@
-import subprocess
-import time
-
-def run_streamlit(filename, port=8501):
-    # Kill SEMUA proses streamlit, bukan hanya yang kita spawn
-    subprocess.run(["pkill", "-f", "streamlit"], capture_output=True)
-
-    # Force-free port kalau masih ada yang nempel
-    subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True)
-
-    # Tutup semua tunnel ngrok
-    ngrok.kill()
-
-    # Tunggu port benar-benar bebas
-    time.sleep(3)
-
-    proc = subprocess.Popen(
-        [
-            "streamlit", "run", filename,
-            "--server.headless=true",
-            "--server.port", str(port),
-            "--server.enableCORS=false",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-
-    time.sleep(3)
-
-    public_url = ngrok.connect(port)
-    print(f"Streamlit berjalan: {public_url}")
-
-    return proc
+# =========================
 # data.py
+# =========================
 
 PACKAGES = [
     {
@@ -130,12 +99,10 @@ ALUR_PENDAFTARAN = [
     "Setelah aktif, pembayaran instalasi dan tagihan mengikuti ketentuan paket"
 ]
 
-import subprocess
-import time
 
+# =========================
 # tools.py
-
-# from data import PACKAGES, FAQS, PROMOS, SYARAT_PEMASANGAN, ALUR_PENDAFTARAN
+# =========================
 
 lead_database = []
 
@@ -145,20 +112,22 @@ def format_rupiah(angka: int) -> str:
 def get_all_packages() -> list:
     return PACKAGES
 
-def recommend_package(jumlah_pengguna: str, aktivitas: str, budget: str) -> str:
+def recommend_package(jumlah_pengguna: str = "", aktivitas: str = "", budget: str = "") -> str:
     hasil = []
+
+    budget_int = None
+    if budget:
+        try:
+            budget_int = int("".join(filter(str.isdigit, str(budget))))
+        except Exception:
+            budget_int = None
 
     for paket in PACKAGES:
         nama = paket["nama"]
         harga = paket.get("tagihan_bulanan", 0)
 
-        if budget:
-            try:
-                budget_int = int("".join(filter(str.isdigit, budget)))
-                if harga > budget_int:
-                    continue
-            except:
-                pass
+        if budget_int and harga > budget_int:
+            continue
 
         hasil.append(
             f"{nama} - {paket['jenis']} - tagihan bulanan {format_rupiah(harga)}"
@@ -175,7 +144,8 @@ def get_promos() -> list:
 def answer_faq(user_question: str) -> str:
     q = user_question.lower()
     for item in FAQS:
-        if item["pertanyaan"].lower() in q or any(k in q for k in item["pertanyaan"].lower().split()):
+        pertanyaan = item["pertanyaan"].lower()
+        if pertanyaan in q or any(k in q for k in pertanyaan.split()):
             return item["jawaban"]
     return "Jawaban belum tersedia di data. Nanti saya bantu teruskan ke admin ya."
 
@@ -185,7 +155,7 @@ def get_installation_requirements() -> list:
 def get_registration_flow() -> list:
     return ALUR_PENDAFTARAN
 
-def save_lead(nama: str, whatsapp: str, lokasi: str, paket_diminati: str = "") -> str:
+def save_lead(nama: str, lokasi: str, whatsapp: str, paket_diminati: str = "") -> str:
     data = {
         "nama": nama,
         "whatsapp": whatsapp,
@@ -198,126 +168,10 @@ def save_lead(nama: str, whatsapp: str, lokasi: str, paket_diminati: str = "") -
 def get_saved_leads() -> list:
     return lead_database
 
-saved_leads = []
 
-def get_all_packages() -> list:
-    """Mengambil semua paket IndiHome yang tersedia."""
-    return [
-        {
-            "nama": "EZnet 20 Mbps",
-            "jenis": "Internet rumah saja",
-            "tagihan_bulanan": 194250,
-            "biaya_awal": 99000,
-            "catatan": "Bayar tagihan pertama bulan depan tanggal 5."
-        },
-        {
-            "nama": "One Dynamic 20 Mbps 30 GB",
-            "jenis": "Internet rumah + paket data mobile",
-            "tagihan_bulanan": 227550,
-            "biaya_awal": 99000,
-            "catatan": "Kuota keluarga 30 GB per bulan untuk 3 nomor, bonus 2 perdana Telkomsel gratis."
-        },
-        {
-            "nama": "IndiHome 50 Mbps Internet Only",
-            "jenis": "Internet rumah saja",
-            "tagihan_bulanan": 230000,
-            "biaya_awal": 0,
-            "catatan": "Ada skema PDD kontrak khusus, setelah lewat masa kontrak bisa jadi tarif reguler."
-        }
-    ]
-
-
-def recommend_package(jumlah_pengguna: int, aktivitas: str, budget: int) -> str:
-    """Memberikan rekomendasi paket IndiHome berdasarkan jumlah pengguna, aktivitas internet, dan budget."""
-    aktivitas = aktivitas.lower()
-
-    if budget <= 200000:
-        return "Budget Anda paling cocok ke EZnet 20 Mbps dengan tagihan sekitar Rp194.250 per bulan."
-    elif budget <= 230000:
-        if "mobile" in aktivitas or "kuota" in aktivitas:
-            return "Saya rekomendasikan One Dynamic 20 Mbps 30 GB karena ada Wi-Fi rumah plus kuota keluarga."
-        return "Saya rekomendasikan IndiHome 50 Mbps Internet Only atau One Dynamic 20 Mbps, tergantung Anda butuh kuota mobile atau tidak."
-    else:
-        if jumlah_pengguna >= 4 or "gaming" in aktivitas or "streaming" in aktivitas:
-            return "Saya rekomendasikan IndiHome 50 Mbps Internet Only karena lebih nyaman untuk pemakaian ramai, streaming, atau gaming."
-        return "Untuk kebutuhan umum keluarga, One Dynamic 20 Mbps atau IndiHome 50 Mbps sama-sama layak dipertimbangkan."
-
-
-def get_promos() -> list:
-    """Mengambil daftar promo IndiHome yang sedang tersedia."""
-    return [
-        "Promo hemat EZnet: biaya instalasi hanya Rp99.000, tagihan bulanan Rp194.250.",
-        "Promo One Dynamic: Wi-Fi rumah 20 Mbps, kuota keluarga 30 GB per bulan, dan 2 perdana Telkomsel gratis.",
-        "Promo awal pasang: saat layanan aktif, pelanggan hanya bayar biaya instalasi Rp99.000."
-    ]
-
-
-def answer_faq(question: str) -> str:
-    """Menjawab pertanyaan umum pelanggan berdasarkan FAQ IndiHome yang tersedia."""
-    q = question.lower()
-
-    faq = {
-        "20 mbps cukup untuk berapa perangkat": "20 Mbps dinilai aman untuk sekitar 3 HP, bahkan bisa dipakai untuk TikTok dan game ringan.",
-        "apakah pelanggan harus ada saat pemasangan": "Tidak harus, asalkan data, share lokasi, foto rumah, dan komunikasi dengan teknisi sudah lengkap.",
-        "kapan pemasangan dilakukan": "Bisa one day service, tetapi tetap tergantung antrean dan kondisi teknisi.",
-        "bagaimana pembayaran setelah terpasang": "Biaya instalasi dibayar saat layanan aktif, sedangkan tagihan bulanan mengikuti paket dan periode tagihan.",
-        "bagaimana jika email tidak bisa dipakai": "Bisa ganti atau buat email baru, dan sebaiknya sesuai nama di KTP."
-    }
-
-    for key, value in faq.items():
-        if key in q:
-            return value
-
-    return "Maaf, FAQ itu belum ada di data. Nanti bisa saya teruskan ke admin."
-
-
-def get_installation_requirements() -> list:
-    """Mengambil syarat pemasangan IndiHome."""
-    return [
-        "Nama sesuai KTP.",
-        "Nomor HP/WhatsApp aktif.",
-        "Email aktif dan sebaiknya sesuai nama KTP.",
-        "Alamat pemasangan lengkap.",
-        "Pilihan paket dan jenis pemasangan.",
-        "Foto KTP wajib.",
-        "Foto rumah tampak depan wajib.",
-        "Share lokasi akurat.",
-        "Bersedia menerima konfirmasi dari teknisi."
-    ]
-
-
-def get_registration_flow() -> list:
-    """Mengambil alur pendaftaran IndiHome dari awal sampai pemasangan aktif."""
-    return [
-        "Konsultasi paket dan cek kebutuhan pemakaian.",
-        "Isi form pendaftaran.",
-        "Kirim data dan lampiran foto KTP serta foto rumah.",
-        "Verifikasi email dan WhatsApp.",
-        "Buka link registrasi dari WhatsApp atau email.",
-        "Pilih jadwal pemasangan terdekat.",
-        "Order diproses dan masuk antrean.",
-        "Teknisi menghubungi pelanggan.",
-        "Pemasangan dilakukan.",
-        "Setelah aktif, pembayaran instalasi dan tagihan mengikuti ketentuan paket."
-    ]
-
-
-def save_lead(nama: str, lokasi: str, whatsapp: str) -> str:
-    """Menyimpan data lead calon pelanggan IndiHome ke memori sederhana."""
-    lead = {
-        "nama": nama,
-        "lokasi": lokasi,
-        "whatsapp": whatsapp
-    }
-    saved_leads.append(lead)
-    return f"Lead berhasil disimpan untuk {nama} di {lokasi} dengan WhatsApp {whatsapp}."
-
-
-def get_saved_leads() -> list:
-    """Mengambil daftar lead calon pelanggan yang sudah tersimpan."""
-    return saved_leads
-
+# =========================
 # prompt.py
+# =========================
 
 SYSTEM_PROMPT = """
 Kamu adalah admin jualan IndiHome yang ramah, singkat, dan persuasif.
@@ -339,96 +193,10 @@ Aturan:
 - Fokus pada penjualan dan informasi layanan IndiHome, hindari topik di luar itu.
 """
 
-# app.py
 
-import os
-from langchain_google_genai import ChatGoogleGenerativeAI 
-from langchain.agents import create_agent
-from langgraph.checkpoint.memory import InMemorySaver
-
-# Jika di Google Colab
-
-
-# =========================================================
-# Pastikan fungsi-fungsi ini SUDAH didefinisikan di cell sebelumnya:
-# - get_all_packages
-# - recommend_package
-# - get_promos
-# - answer_faq
-# - get_installation_requirements
-# - get_registration_flow
-# - save_lead
-# - get_saved_leads
-# Dan SYSTEM_PROMPT juga sudah ada.
-# =========================================================
-
-import streamlit as st
-import os
-
-GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
-
-if not GOOGLE_API_KEY:
-    st.error("GOOGLE_API_KEY belum diatur di Streamlit Secrets.")
-    st.stop()
-    
-# Inisialisasi model
-model = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash-lite",
-    temperature=0.2,
-    google_api_key=os.environ["GOOGLE_API_KEY"]
-)
-
-# Memory percakapan
-checkpointer = InMemorySaver()
-
-# Daftar tools
-tools = [
-    get_all_packages,
-    recommend_package,
-    get_promos,
-    answer_faq,
-    get_installation_requirements,
-    get_registration_flow,
-    save_lead,
-    get_saved_leads,
-]
-
-# Buat agent
-agent = create_agent(
-    model=model,
-    tools=tools,
-    system_prompt=SYSTEM_PROMPT,
-    checkpointer=checkpointer
-)
-
-# Fungsi chat interaktif
-def chat_with_bot(thread_id: str = "indihome-sales-1"):
-    """Menjalankan chatbot sales IndiHome dengan memory per thread."""
-    config = {"configurable": {"thread_id": thread_id}}
-    print("Chatbot IndiHome siap. Ketik 'q' untuk keluar.\n")
-
-    while True:
-        user_input = input("User: ").strip()
-
-        if user_input.lower() in ["q", "quit", "exit"]:
-            print("Bot: Terima kasih, semoga saya bisa bantu lagi.")
-            break
-
-        if not user_input:
-            print("Bot: Silakan tulis pertanyaan atau kebutuhan Anda ya.")
-            continue
-
-        response = agent.invoke(
-            {"messages": [{"role": "user", "content": user_input}]},
-            config=config
-        )
-
-        print("Bot:", response["messages"][-1].content)
-
-# Jalankan chatbot
-chat_with_bot()
-
-#CODE UI STREAMLIT
+# =========================
+# CODE UI STREAMLIT
+# =========================
 
 import os
 import uuid
@@ -437,20 +205,18 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
-# =========================
-# PASTE tools & SYSTEM_PROMPT di atas file ini
-# atau import dari file lain
-# =========================
-
 st.set_page_config(
     page_title="Chatbot Sales IndiHome",
     page_icon="💬",
     layout="wide"
 )
 
-# =========================
-# Inisialisasi state
-# =========================
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
+
+if not GOOGLE_API_KEY:
+    st.error("GOOGLE_API_KEY belum diatur di Streamlit Secrets.")
+    st.stop()
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -461,7 +227,7 @@ if "agent" not in st.session_state:
     model = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash-lite",
         temperature=0.2,
-        google_api_key=os.environ["GOOGLE_API_KEY"]
+        google_api_key=GOOGLE_API_KEY
     )
 
     checkpointer = InMemorySaver()
@@ -486,39 +252,36 @@ if "agent" not in st.session_state:
 
 agent = st.session_state.agent
 
-# =========================
-# Sidebar
-# =========================
 with st.sidebar:
     st.title("IndiHome Sales Bot")
     st.caption("Bantu pelanggan pilih paket, cek promo, dan daftar pemasangan.")
 
     st.subheader("Paket Tersedia")
     for paket in get_all_packages():
+        biaya_awal = paket.get("biaya_awal", 0)
         st.markdown(
             f"""
             **{paket['nama']}**  
             Jenis: {paket['jenis']}  
-            Tagihan: Rp{paket['tagihan_bulanan']:,}  
-            Biaya awal: Rp{paket['biaya_awal']:,}
+            Tagihan: {format_rupiah(paket['tagihan_bulanan'])}  
+            Biaya awal: {format_rupiah(biaya_awal)}
             """
         )
         st.divider()
 
     st.subheader("Promo Aktif")
     for promo in get_promos():
-        st.write(f"- {promo}")
+        if isinstance(promo, dict):
+            st.write(f"- {promo['nama']}: {promo['detail']}")
+        else:
+            st.write(f"- {promo}")
 
-# =========================
-# Main layout
-# =========================
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.title("💬 Chatbot Sales IndiHome")
     st.write("Tanyakan paket, promo, syarat pemasangan, atau langsung daftar.")
 
-    # Tombol cepat
     quick_col1, quick_col2, quick_col3 = st.columns(3)
     with quick_col1:
         if st.button("Lihat Paket"):
@@ -536,13 +299,12 @@ with col1:
                 {"role": "user", "content": "Apa syarat pemasangan IndiHome?"}
             )
 
-    # Tampilkan chat history
     for msg in st.session_state.messages:
         with st.chat_message("user" if msg["role"] == "user" else "assistant"):
             st.markdown(msg["content"])
 
-    # Input chat
     prompt = st.chat_input("Tulis pertanyaan Anda...")
+
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -562,19 +324,20 @@ with col2:
         nama = st.text_input("Nama")
         lokasi = st.text_input("Lokasi pemasangan")
         whatsapp = st.text_input("Nomor WhatsApp")
+        paket_diminati = st.text_input("Paket diminati (opsional)")
         submitted = st.form_submit_button("Simpan Lead")
 
         if submitted:
             if nama and lokasi and whatsapp:
-                hasil = save_lead(nama, lokasi, whatsapp)
+                hasil = save_lead(nama, lokasi, whatsapp, paket_diminati)
                 st.success(hasil)
             else:
                 st.warning("Lengkapi nama, lokasi, dan WhatsApp dulu.")
 
     with st.expander("FAQ"):
-        st.write("- 20 Mbps cukup untuk sekitar 3 HP.")
-        st.write("- Pemasangan bisa one day service tergantung antrean.")
-        st.write("- Pelanggan tidak harus ada saat pemasangan jika data lengkap.")
+        for item in FAQS:
+            st.write(f"- {item['pertanyaan']}")
+            st.caption(item["jawaban"])
 
     with st.expander("Syarat Pemasangan"):
         for item in get_installation_requirements():
