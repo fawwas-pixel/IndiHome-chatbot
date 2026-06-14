@@ -283,6 +283,36 @@ if "agent" not in st.session_state:
 
 agent = st.session_state.agent
 
+def local_fallback_answer(user_text: str) -> str:
+    q = user_text.lower()
+
+    if "paket" in q:
+        hasil = []
+        for paket in PACKAGES:
+            hasil.append(
+                f"{paket['nama']} - {paket['jenis']} - {format_rupiah(paket['tagihan_bulanan'])}/bulan"
+            )
+        return "Berikut paket yang tersedia:\n\n" + "\n".join(hasil)
+
+    if "promo" in q:
+        hasil = [f"{item['nama']}: {item['detail']}" for item in PROMOS]
+        return "Promo saat ini:\n\n" + "\n".join(hasil)
+
+    if "syarat" in q or "pemasangan" in q:
+        return "Syarat pemasangan:\n\n" + "\n".join([f"- {x}" for x in SYARAT_PEMASANGAN])
+
+    try:
+        faq_jawaban = answer_faq.invoke({"user_question": user_text})
+        if "belum tersedia" not in faq_jawaban.lower():
+            return faq_jawaban
+    except Exception:
+        pass
+
+    return (
+        "Maaf, sistem sedang sibuk. "
+        "Untuk sementara saya bisa bantu info paket, promo, syarat pemasangan, atau simpan data lead Anda."
+    )
+
 with st.sidebar:
     st.title("IndiHome Sales Bot")
     st.caption("Bantu pelanggan pilih paket, cek promo, dan daftar pemasangan.")
