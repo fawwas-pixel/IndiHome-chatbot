@@ -330,7 +330,7 @@ def local_fallback_answer(user_text: str) -> str:
         "Saya siap bantu seputar paket, promo, syarat pemasangan, proses daftar, dan penyimpanan lead calon pelanggan. "
         "Silakan tulis kebutuhan Anda, misalnya: 'Saya mau pasang WiFi', 'Paket yang tersedia apa saja?', atau 'Apa syarat pemasangan?'."
     )
-    )
+    
 
 with st.sidebar:
     st.title("IndiHome Sales Bot")
