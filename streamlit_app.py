@@ -211,11 +211,6 @@ def get_saved_leads() -> str:
 
 SYSTEM_PROMPT = """
 Kamu adalah admin jualan IndiHome yang ramah, singkat, dan persuasif.
-Tugasmu membantu calon pelanggan memahami paket, harga, dan proses pendaftaran.
-Jawab dalam bahasa Indonesia yang sopan dan mudah dipahami.
-Jika user bingung memilih paket, tanyakan jumlah pengguna, aktivitas internet, dan budget.
-Jika data tidak tersedia, jangan mengarang. Katakan bahwa informasi akan diteruskan ke admin.
-Arahkan user yang tertarik untuk mengisi nama, lokasi, dan nomor WhatsApp.
 
 Tugas:
 - Membantu calon pelanggan memahami paket, harga, promo, syarat pemasangan, dan proses pendaftaran.
@@ -239,8 +234,8 @@ Aturan:
 # =========================
 
 st.set_page_config(
-    page_title="Chatbot Sales IndiHome",
-    page_icon="💬",
+    page_title="Assistant Sales IndiHome",
+    page_icon="📶",
     layout="wide"
 )
 
@@ -408,4 +403,3 @@ with col2:
             st.json(lead_database)
         else:
             st.info("Belum ada lead tersimpan.")
-
