@@ -284,33 +284,52 @@ if "agent" not in st.session_state:
 agent = st.session_state.agent
 
 def local_fallback_answer(user_text: str) -> str:
-    q = user_text.lower()
+    q = user_text.lower().strip()
 
-    if "paket" in q:
+    if "pasang wifi" in q or "pasang indihome" in q or "mau pasang" in q or "daftar" in q:
+        return (
+            "Siap, saya bantu pendaftaran WiFi IndiHome. "
+            "Silakan kirim:\n\n"
+            "- Nama lengkap\n"
+            "- Lokasi pemasangan\n"
+            "- Nomor WhatsApp aktif\n"
+            "- Paket yang diminati (kalau sudah ada)\n\n"
+            "Kalau belum tahu paketnya, saya bisa bantu rekomendasikan juga."
+        )
+
+    if "paket" in q or "harga" in q or "berapa" in q:
         hasil = []
         for paket in PACKAGES:
             hasil.append(
-                f"{paket['nama']} - {paket['jenis']} - {format_rupiah(paket['tagihan_bulanan'])}/bulan"
+                f"- {paket['nama']} | {paket['jenis']} | {format_rupiah(paket['tagihan_bulanan'])}/bulan"
             )
         return "Berikut paket yang tersedia:\n\n" + "\n".join(hasil)
 
-    if "promo" in q:
-        hasil = [f"{item['nama']}: {item['detail']}" for item in PROMOS]
+    if "promo" in q or "diskon" in q:
+        hasil = [f"- {item['nama']}: {item['detail']}" for item in PROMOS]
         return "Promo saat ini:\n\n" + "\n".join(hasil)
 
-    if "syarat" in q or "pemasangan" in q:
+    if "syarat" in q:
         return "Syarat pemasangan:\n\n" + "\n".join([f"- {x}" for x in SYARAT_PEMASANGAN])
 
-    try:
-        faq_jawaban = answer_faq.invoke({"user_question": user_text})
-        if "belum tersedia" not in faq_jawaban.lower():
-            return faq_jawaban
-    except Exception:
-        pass
+    if "alur" in q or "cara daftar" in q or "cara pasang" in q or "proses" in q:
+        return "Alur pendaftaran:\n\n" + "\n".join(
+            [f"{i+1}. {step}" for i, step in enumerate(ALUR_PENDAFTARAN)]
+        )
+
+    if "20 mbps" in q or "berapa perangkat" in q:
+        return "20 Mbps dinilai aman untuk sekitar 3 HP, bahkan bisa dipakai untuk TikTok dan game ringan."
+
+    if "email" in q:
+        return "Kalau email tidak bisa dipakai, bisa ganti atau buat email baru. Sebaiknya sesuai nama di KTP."
+
+    if "teknisi" in q or "pemasangan" in q:
+        return "Pemasangan bisa one day service, tapi tetap tergantung antrean dan kondisi teknisi."
 
     return (
-        "Maaf, sistem sedang sibuk. "
-        "Untuk sementara saya bisa bantu info paket, promo, syarat pemasangan, atau simpan data lead Anda."
+        "Saya siap bantu seputar paket, promo, syarat pemasangan, proses daftar, dan penyimpanan lead calon pelanggan. "
+        "Silakan tulis kebutuhan Anda, misalnya: 'Saya mau pasang WiFi', 'Paket yang tersedia apa saja?', atau 'Apa syarat pemasangan?'."
+    )
     )
 
 with st.sidebar:
