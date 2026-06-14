@@ -316,8 +316,6 @@ with col1:
 
     prompt = st.chat_input("Tulis pertanyaan Anda...")
 
-    prompt = st.chat_input("Tulis pertanyaan Anda...")
-
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
 
