@@ -314,7 +314,9 @@ with col1:
         with st.chat_message("user" if msg["role"] == "user" else "assistant"):
             st.markdown(msg["content"])
 
-   prompt = st.chat_input("Tulis pertanyaan Anda...")
+    prompt = st.chat_input("Tulis pertanyaan Anda...")
+
+    prompt = st.chat_input("Tulis pertanyaan Anda...")
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
@@ -342,10 +344,6 @@ if prompt:
             st.markdown(bot_reply)
 
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        bot_reply = response["messages"][-1].content
-        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-        st.rerun()
-
 with col2:
     st.subheader("Form Lead")
     with st.form("lead_form"):
