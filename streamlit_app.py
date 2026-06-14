@@ -256,11 +256,11 @@ if "thread_id" not in st.session_state:
 
 if "agent" not in st.session_state:
     model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
-        temperature=0.2,
-        google_api_key=GOOGLE_API_KEY
-    )
-
+    model="gemini-2.5-flash-lite",
+    temperature=0.2,
+    google_api_key=GOOGLE_API_KEY,
+    max_retries=2
+)
     checkpointer = InMemorySaver()
 
     tools = [
