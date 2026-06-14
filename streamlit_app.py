@@ -104,18 +104,37 @@ ALUR_PENDAFTARAN = [
 # tools.py
 # =========================
 
+import os
+import uuid
+import json
+import streamlit as st
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.agents import create_agent
+from langchain.tools import tool
+from langgraph.checkpoint.memory import InMemorySaver
+
 lead_database = []
 
 def format_rupiah(angka: int) -> str:
     return f"Rp{angka:,}".replace(",", ".")
 
-def get_all_packages() -> list:
-    return PACKAGES
-
-def recommend_package(jumlah_pengguna: str = "", aktivitas: str = "", budget: str = "") -> str:
+@tool
+def get_all_packages() -> str:
+    """Mengambil semua paket IndiHome yang tersedia."""
     hasil = []
+    for paket in PACKAGES:
+        biaya_awal = paket.get("biaya_awal", 0)
+        hasil.append(
+            f"{paket['nama']} | jenis: {paket['jenis']} | tagihan: {format_rupiah(paket['tagihan_bulanan'])} | biaya awal: {format_rupiah(biaya_awal)} | catatan: {paket.get('catatan', '-')}"
+        )
+    return "\n".join(hasil)
 
+@tool
+def recommend_package(jumlah_pengguna: str = "", aktivitas: str = "", budget: str = "") -> str:
+    """Memberikan rekomendasi paket IndiHome berdasarkan jumlah pengguna, aktivitas internet, dan budget."""
+    hasil = []
     budget_int = None
+
     if budget:
         try:
             budget_int = int("".join(filter(str.isdigit, str(budget))))
@@ -123,25 +142,34 @@ def recommend_package(jumlah_pengguna: str = "", aktivitas: str = "", budget: st
             budget_int = None
 
     for paket in PACKAGES:
-        nama = paket["nama"]
         harga = paket.get("tagihan_bulanan", 0)
-
         if budget_int and harga > budget_int:
             continue
-
-        hasil.append(
-            f"{nama} - {paket['jenis']} - tagihan bulanan {format_rupiah(harga)}"
-        )
+        hasil.append(f"{paket['nama']} - {paket['jenis']} - {format_rupiah(harga)}")
 
     if not hasil:
         return "Belum ada paket yang benar-benar cocok dengan budget tersebut. Saya bisa bantu teruskan ke admin."
 
-    return "\n".join(hasil[:3])
+    if aktivitas:
+        aktivitas = aktivitas.lower()
+        if "kuota" in aktivitas or "mobile" in aktivitas:
+            for item in hasil:
+                if "One Dynamic" in item:
+                    return f"Rekomendasi utama: {item}"
 
-def get_promos() -> list:
-    return PROMOS
+    return "Rekomendasi paket:\n" + "\n".join(hasil[:3])
 
+@tool
+def get_promos() -> str:
+    """Mengambil daftar promo IndiHome yang tersedia."""
+    hasil = []
+    for promo in PROMOS:
+        hasil.append(f"{promo['nama']}: {promo['detail']}")
+    return "\n".join(hasil)
+
+@tool
 def answer_faq(user_question: str) -> str:
+    """Menjawab pertanyaan umum pelanggan berdasarkan FAQ IndiHome yang tersedia."""
     q = user_question.lower()
     for item in FAQS:
         pertanyaan = item["pertanyaan"].lower()
@@ -149,13 +177,19 @@ def answer_faq(user_question: str) -> str:
             return item["jawaban"]
     return "Jawaban belum tersedia di data. Nanti saya bantu teruskan ke admin ya."
 
-def get_installation_requirements() -> list:
-    return SYARAT_PEMASANGAN
+@tool
+def get_installation_requirements() -> str:
+    """Mengambil syarat pemasangan IndiHome."""
+    return "\n".join([f"- {item}" for item in SYARAT_PEMASANGAN])
 
-def get_registration_flow() -> list:
-    return ALUR_PENDAFTARAN
+@tool
+def get_registration_flow() -> str:
+    """Mengambil alur pendaftaran IndiHome dari awal sampai pemasangan aktif."""
+    return "\n".join([f"{i+1}. {step}" for i, step in enumerate(ALUR_PENDAFTARAN)])
 
+@tool
 def save_lead(nama: str, lokasi: str, whatsapp: str, paket_diminati: str = "") -> str:
+    """Menyimpan data lead calon pelanggan IndiHome ke memori sederhana."""
     data = {
         "nama": nama,
         "whatsapp": whatsapp,
@@ -165,8 +199,12 @@ def save_lead(nama: str, lokasi: str, whatsapp: str, paket_diminati: str = "") -
     lead_database.append(data)
     return f"Lead untuk {nama} berhasil disimpan dan siap diteruskan ke admin sales."
 
-def get_saved_leads() -> list:
-    return lead_database
+@tool
+def get_saved_leads() -> str:
+    """Mengambil daftar lead calon pelanggan yang sudah tersimpan."""
+    if not lead_database:
+        return "Belum ada lead tersimpan."
+    return json.dumps(lead_database, ensure_ascii=False, indent=2)
 
 
 # =========================
@@ -197,13 +235,6 @@ Aturan:
 # =========================
 # CODE UI STREAMLIT
 # =========================
-
-import os
-import uuid
-import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import create_agent
-from langgraph.checkpoint.memory import InMemorySaver
 
 st.set_page_config(
     page_title="Chatbot Sales IndiHome",
@@ -257,7 +288,7 @@ with st.sidebar:
     st.caption("Bantu pelanggan pilih paket, cek promo, dan daftar pemasangan.")
 
     st.subheader("Paket Tersedia")
-    for paket in get_all_packages():
+    for paket in PACKAGES:
         biaya_awal = paket.get("biaya_awal", 0)
         st.markdown(
             f"""
@@ -270,34 +301,14 @@ with st.sidebar:
         st.divider()
 
     st.subheader("Promo Aktif")
-    for promo in get_promos():
-        if isinstance(promo, dict):
-            st.write(f"- {promo['nama']}: {promo['detail']}")
-        else:
-            st.write(f"- {promo}")
+    for promo in PROMOS:
+        st.write(f"- {promo['nama']}: {promo['detail']}")
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.title("💬 Chatbot Sales IndiHome")
     st.write("Tanyakan paket, promo, syarat pemasangan, atau langsung daftar.")
-
-    quick_col1, quick_col2, quick_col3 = st.columns(3)
-    with quick_col1:
-        if st.button("Lihat Paket"):
-            st.session_state.messages.append(
-                {"role": "user", "content": "Paket IndiHome apa saja yang tersedia?"}
-            )
-    with quick_col2:
-        if st.button("Lihat Promo"):
-            st.session_state.messages.append(
-                {"role": "user", "content": "Promo IndiHome yang tersedia apa saja?"}
-            )
-    with quick_col3:
-        if st.button("Syarat Pasang"):
-            st.session_state.messages.append(
-                {"role": "user", "content": "Apa syarat pemasangan IndiHome?"}
-            )
 
     for msg in st.session_state.messages:
         with st.chat_message("user" if msg["role"] == "user" else "assistant"):
@@ -329,7 +340,12 @@ with col2:
 
         if submitted:
             if nama and lokasi and whatsapp:
-                hasil = save_lead(nama, lokasi, whatsapp, paket_diminati)
+                hasil = save_lead.invoke({
+                    "nama": nama,
+                    "lokasi": lokasi,
+                    "whatsapp": whatsapp,
+                    "paket_diminati": paket_diminati
+                })
                 st.success(hasil)
             else:
                 st.warning("Lengkapi nama, lokasi, dan WhatsApp dulu.")
@@ -340,16 +356,15 @@ with col2:
             st.caption(item["jawaban"])
 
     with st.expander("Syarat Pemasangan"):
-        for item in get_installation_requirements():
+        for item in SYARAT_PEMASANGAN:
             st.write(f"- {item}")
 
     with st.expander("Alur Pendaftaran"):
-        for i, step in enumerate(get_registration_flow(), start=1):
+        for i, step in enumerate(ALUR_PENDAFTARAN, start=1):
             st.write(f"{i}. {step}")
 
     with st.expander("Lead Tersimpan"):
-        leads = get_saved_leads()
-        if leads:
-            st.json(leads)
+        if lead_database:
+            st.json(lead_database)
         else:
             st.info("Belum ada lead tersimpan.")
