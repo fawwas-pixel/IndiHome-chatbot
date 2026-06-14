@@ -305,7 +305,35 @@ with st.sidebar:
         st.write(f"- {promo['nama']}: {promo['detail']}")
 
 col1, col2 = st.columns([2, 1])
+def local_fallback_answer(user_text: str) -> str:
+    q = user_text.lower()
 
+    if "paket" in q:
+        hasil = []
+        for paket in PACKAGES:
+            hasil.append(
+                f"{paket['nama']} - {paket['jenis']} - {format_rupiah(paket['tagihan_bulanan'])}/bulan"
+            )
+        return "Berikut paket yang tersedia:\n\n" + "\n".join(hasil)
+
+    if "promo" in q:
+        hasil = [f"{item['nama']}: {item['detail']}" for item in PROMOS]
+        return "Promo saat ini:\n\n" + "\n".join(hasil)
+
+    if "syarat" in q or "pemasangan" in q:
+        return "Syarat pemasangan:\n\n" + "\n".join([f"- {x}" for x in SYARAT_PEMASANGAN])
+
+    try:
+        faq_jawaban = answer_faq.invoke({"user_question": user_text})
+        if "belum tersedia" not in faq_jawaban.lower():
+            return faq_jawaban
+    except Exception:
+        pass
+
+    return (
+        "Maaf, sistem sedang sibuk. "
+        "Untuk sementara saya bisa bantu info paket, promo, syarat pemasangan, atau simpan data lead Anda."
+    )
 with col1:
     st.title("💬 Chatbot Sales IndiHome")
     st.write("Tanyakan paket, promo, syarat pemasangan, atau langsung daftar.")
