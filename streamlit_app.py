@@ -362,16 +362,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 # Dan SYSTEM_PROMPT juga sudah ada.
 # =========================================================
 
-# Ambil API key dari Colab Secrets
-try:
-    GOOGLE_API_KEY = userdata.get("GEMINI_API_KEY")
-    os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
-except Exception:
-    raise ValueError(
-        "Secret GEMINI_API_KEY belum ditemukan. "
-        "Tambahkan dulu di Colab > Secrets."
-    )
+import streamlit as st
+import os
 
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_API_KEY", os.environ.get("GOOGLE_API_KEY"))
+
+if not GOOGLE_API_KEY:
+    st.error("GOOGLE_API_KEY belum diatur di Streamlit Secrets.")
+    st.stop()
+    
 # Inisialisasi model
 model = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash-lite",
