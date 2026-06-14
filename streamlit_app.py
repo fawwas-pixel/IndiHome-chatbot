@@ -332,9 +332,7 @@ with st.sidebar:
     st.subheader("Paket Tersedia")
     for paket in PACKAGES:
         biaya_awal = paket.get("biaya_awal", 0)
-        st.markdown(
-            f"""
-            **{paket['nama']}**  
+        st.markdown(f"**{paket['nama']}**")
             Jenis: {paket['jenis']}  
             Tagihan: {format_rupiah(paket['tagihan_bulanan'])}  
             Biaya awal: {format_rupiah(biaya_awal)}
