@@ -316,13 +316,38 @@ with col1:
         with st.chat_message("user" if msg["role"] == "user" else "assistant"):
             st.markdown(msg["content"])
 
+def local_fallback_answer(user_text: str) -> str:
+    q = user_text.lower()
+
+    if "paket" in q:
+        hasil = []
+        for paket in PACKAGES:
+            hasil.append(
+                f"{paket['nama']} - {paket['jenis']} - {format_rupiah(paket['tagihan_bulanan'])}/bulan"
+            )
+        return "Berikut paket yang tersedia:\n\n" + "\n".join(hasil)
+
+    if "promo" in q:
+        hasil = [f"{item['nama']}: {item['detail']}" for item in PROMOS]
+        return "Promo saat ini:\n\n" + "\n".join(hasil)
+
+    if "syarat" in q or "pemasangan" in q:
+        return "Syarat pemasangan:\n\n" + "\n".join([f"- {x}" for x in SYARAT_PEMASANGAN])
+
+    for item in FAQS:
+        pertanyaan = item["pertanyaan"].lower()
+        if pertanyaan in q or any(k in q for k in pertanyaan.split()):
+            return item["jawaban"]
+
+    return (
+        "Maaf, sistem sedang sibuk atau jawaban belum tersedia. "
+        "Saya bisa bantu info paket, promo, syarat pemasangan, atau simpan data lead Anda."
+    )
+
     prompt = st.chat_input("Tulis pertanyaan Anda...")
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
-
-    with st.chat_message("user"):
-        st.markdown(prompt)
 
     with st.chat_message("assistant"):
         with st.spinner("Sedang memproses jawaban..."):
@@ -332,7 +357,6 @@ if prompt:
                     {"messages": [{"role": "user", "content": prompt}]},
                     config=config
                 )
-
                 bot_reply = response["messages"][-1].content
 
                 if not bot_reply or str(bot_reply).strip() == "":
@@ -344,6 +368,7 @@ if prompt:
             st.markdown(bot_reply)
 
     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+
 with col2:
     st.subheader("Form Lead")
     with st.form("lead_form"):
